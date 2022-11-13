@@ -2,8 +2,25 @@ const express = require('express')
 const bodyParser = require('body-parser')
 const { Op } = require("sequelize")
 const app = express();
+const {Profile, Job} = require('./model')
+const {getProfile} = require('./middleware/getProfile')
 
 app.use(bodyParser.json());
+app.use(getProfile)
+
+//TODO: TODO: !!! select attributes (field), limit results
+
+//NOTES: typescript
+
+app.get('/profiles', async (req, res) =>{
+    const profiles = await Profile.findAll()
+    res.json(profiles)
+})
+
+app.get('/jobs', async (req, res) =>{
+    const jobs = await Job.findAll()
+    res.json(jobs)
+})
 
 
 const contractsRouter = require('./routes/contracts')

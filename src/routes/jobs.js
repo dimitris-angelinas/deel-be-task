@@ -4,7 +4,7 @@ const {getContractProfileId} = require('../middleware/getContractProfileId')
 const { Op } = require("sequelize")
 const router = express.Router()
 
-const {Profile, Contract, Job} = require('../model')
+const {sequelize, Profile, Contract, Job} = require('../model')
 
 router.use(getProfile)
 
@@ -38,6 +38,9 @@ router.get('/unpaid', getContractProfileId, async (req, res) =>{
 router.post('/:job_id/pay', async (req, res) =>{
     try {
         const client = req.profile
+
+        if(client.type != 'client') return res.status(403).json({error: 'Wrong client!'})
+        
         const {job_id} = req.params
 
         const job = await Job.findOne({
@@ -48,7 +51,7 @@ router.post('/:job_id/pay', async (req, res) =>{
                     {paid: {[Op.ne]: true}}
                 ],
             },
-            attributes: [],
+            attributes: ['price'],
             include: {
                 model: Contract,
                 required: true,
@@ -56,7 +59,7 @@ router.post('/:job_id/pay', async (req, res) =>{
                 include: {
                     model: Profile,
                     as :'Contractor',
-                    attributes: ['id'],
+                    attributes: ['id', 'balance'],
                     required: true
                 }
             }
@@ -70,13 +73,14 @@ router.post('/:job_id/pay', async (req, res) =>{
 
         const contractor = job.Contract.Contractor
 
-        const clientBalance_p = client.update({balance: client.balance - amount})
-        const contractorBalance_p = contractor.update({balance: contractor.balance + amount})
+        await sequelize.transaction(async (t) => {
+            const clientBalance_p = client.update({balance: client.balance - amount}, { transaction: t })
+            const contractorBalance_p = contractor.update({balance: contractor.balance + amount}, { transaction: t })
+            await Promise.all([clientBalance_p, contractorBalance_p])
+        })
 
-        const balances = await Promise.all([clientBalance_p, contractorBalance_p])
 
-        //TODO: check if contractor update failed and refund client
-        //TODO: update job to paid
+        //TODO: update job to paid?
 
         res.json({message: 'Successful Payment!'})
     }

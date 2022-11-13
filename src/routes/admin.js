@@ -1,9 +1,8 @@
 const express = require('express')
-const sequelize = require("sequelize")
 const {Op} = require("sequelize")
 const router = express.Router()
 
-const {Profile, Contract, Job} = require('../model')
+const {sequelize, Profile, Contract, Job} = require('../model')
 
 const getBestProfiles = async (profileType, params, attributes) => {
     const {start, end, limit} = params
